@@ -23,7 +23,7 @@ You can find the [Hands-on Lab](https://github.com/nasserDev/AppServicesHackatho
 
 If you need any help, press any of the bulbs on your table :)
 
-    ![Help Me Bulbs](HOL/Images/bulb.jpg)
+![Help Me Bulbs](HOL/Images/bulb.jpg)
 
 
 
