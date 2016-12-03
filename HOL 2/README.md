@@ -1,540 +1,372 @@
-<a name="HOLTitle"></a>
-# Azure Functions Hands On Lab #
 
----
+Let’s start out by using the Try Azure Functions experience to create a simple HTTP trigger function..
 
-<a name="Overview"></a>
-## Overview ##
+Here is a very simple HTTP trigger “Hello World” example. Try it yourself:
 
-Functions have been the basic building blocks of software since the first lines of code were written and the need for code organization and reuse became a necessity. Azure Functions expand on these concepts by allowing developers to create "serverless", event-driven functions that run in the cloud and can be shared across a wide variety of services and systems, uniformly managed, and easily scaled based on demand. Azure Functions can be written in a variety of languages, including C#, JavaScript, Python, Bash, and PowerShell, and they're perfect for building apps and nanoservices that employ a compute-on-demand model.
+1. Login to Try Functions (go to [https://functions.azure.com](https://functions.azure.com/) and click the green Try-It-For-Free button)
+2. Choose Webhook + API scenario (many other templates are available for other scenarios)
+3. Choose your programming language between C# or JavaScript (node.js). Azure Functions support additional languages like F#, Python, PowerShell and CMD.
+4. Click “Create this function” button, which will prompt you to login
+5. Login with your selected social identity, wait for few seconds… and you have an HTTP trigger function ready for use
 
-In this lab, you will create an Azure Function that monitors a blob container in Azure Storage for new images, and then performs automated analysis of the images using the Microsoft Cognitive Services [Computer Vision API](https://www.microsoft.com/cognitive-services/en-us/computer-vision-api). Specifically, The Azure Function will analyze each image that is uploaded to the container for adult content, create a copy of the image in another container, and store the scores returned by the Computer Vision API in blob metadata.
+![](images/Try_0-1024x555.jpg)
+ 
+You can copy the Azure Function URL (highlighted below) and paste it into your browser. You should receive a response. You might want to add _&name=YourName_ to the Function URL as the default http trigger template expects name query parameter. Just like that, you created a fully working HTTP endpoint in the cloud.
 
-<a name="Objectives"></a>
-### Objectives ###
+![](images/Try_11-1024x672.jpg)
 
-In this hands-on lab, you will learn how to:
+While this was is an impressive example of how easy it is to create an HTTP endpoint in the cloud, it turns out you can do quite a lot more!  Let’s put together the following scenario. Upload an image that includes some text in it, run an OCR on the image to extract the text, store the text, and finally retrieve both image and text. For small images or for a low volume of image uploads, you can probably do it all in a single Function. However, we want to leverage the Serverless nature of Azure Functions to create a scalable and highly performant design. To do so, we will create three functions:
 
-- Create an Azure Function App
-- Write an Azure Function
-- Configure an Azure Function with a blob trigger
-- Configure app settings for an Azure Function App
-- Process incoming, outgoing, and bidirectional values from a trigger
-- Use Microsoft Cognitive Services to analyze images and store the results in blob metadata
-
-<a name="Prerequisites"></a>
-### Prerequisites ###
-
-The following are required to complete this hands-on lab:
-
-- An active Microsoft Azure subscription, or [sign up for a free trial](http://aka.ms/WATK-FreeTrial)
-- [Microsoft Azure Storage Explorer](http://storageexplorer.com)
-
----
-
-<a name="Exercises"></a>
-## Exercises ##
-
-This hands-on lab includes the following exercises:
-
-- [Exercise 1: Create an Azure Function App](#Exercise1)
-- [Exercise 2: Write an Azure Function](#Exercise2)
-- [Exercise 3: Connect to a storage account](#Exercise3)
-- [Exercise 4: Configure Azure Function App settings](#Exercise4)
-- [Exercise 5: Test the Azure Function](#Exercise5)
-- [Exercise 6: Analyze the results](#Exercise6)
-
- 
-Estimated time to complete this lab: **60** minutes.
-
-<a name="Exercise1"></a>
-## Exercise 1: Create an Azure Function App ##
-
-The first step in writing an Azure Function is to create an Azure Function App. In this exercise, you will create an Azure Function App using the Azure Portal.
-
-1. Open the [Azure Portal](https://portal.azure.com) in your browser. If asked to log in, do so using your Microsoft account.
-
-2. Click **+ New**, followed by **Compute** and **Function App**.
-
-    ![Creating an Azure Function App](Images/new-function-app.png)
-
-    _Creating an Azure Function App_
-
-3. Enter an app name that is unique within Azure. Under **Resource Group**, select **Create new** and enter "FunctionsLabResourceGroup" (without quotation marks) as the resource-group name to create a resource group for the Function App. Accept the default values for all other parameters and click **Create** to create a new Function App.
-
-	> The app name becomes part of a DNS name and therefore must be unique within Azure. Make sure a green check mark appears to the name indicating it is unique. You probably **won't** be able to use "functionslab" as the app name.
- 
-    ![Naming a Function App](Images/function-app-name.png)
-
-    _Naming a Function App_
-
-1. Click **Resource Groups** in the ribbon on the left side of the portal, and then click the resource group created for the Azure Function ("FunctionsLabResourceGroup") to open a blade for the resource group. When "Deploying" changes to "Succeeded," the Function App has been successfully deployed.
-
-	> Azure typically requires less than 30 seconds to create a Function App. You may have to click the browser's **Refresh** button every few seconds to update the deployment status. Clicking the **Refresh** button in the resource-group blade refreshes the list of resources in the resource group, but does not reliably update the deployment status.
-
-    ![Successful deployment](Images/deployment-succeeded.png)
-
-    _Successful deployment_
-
-Wait until the Function App has been deployed, and then proceed to the next exercise. 
-
-<a name="Exercise2"></a>
-## Exercise 2: Write an Azure Function ##
-
-Once you have created an Azure Function App, you can add Azure Functions to it. For writing, compiling, testing, and configuring Azure Functions, the Azure Portal provides the Azure Function Designer. In this exercise, you will add a function to the Function App you created in Exercise 1 and write C# code that analyzes images added to a blob container for adult or "racy" content.
-
-1. In the blade for the "FunctionsLabResourceGroup" resource group, click the Azure Function App that you created in Exercise 1. 
-
-    ![Opening the Function App](Images/open-function-app.png)
-
-    _Opening the Function App_
-
-1. Click **+ New Function** and select **Empty - C# template** from the list of templates. (If the **Empty - C#** template does not appear in the list, make sure **Core** is selected in the drop-down list labeled **Scenario**.)
-  
-    ![Selecting a function template](Images/function-app-select-template.png)
-
-    _Selecting a function template_
-
-1. Type "BlobImageAnalysis" (without quotation marks) for the function name and click **Create**. This will create an "empty" Azure Function written in C#.
-
-    ![Naming the function](Images/function-app-name-function.png)
-
-    _Naming the function_
-
-1. In the code editor, find the **using** statement highlighted below.
-
-    ![Replacing the using statement](Images/code-highlight-using.png)
-
-    _Replacing the using statement_
-
-1. Replace the **using** statement with the following statements:
-   
-	```C#
-	#r "Microsoft.WindowsAzure.Storage"
-	#r "System.Net.Http"
-	
-	using System;
-	using System.Linq;
-	using Microsoft.WindowsAzure.Storage.Blob;
-	using Microsoft.WindowsAzure.Storage;
-	using System.IO;
-	using System.Net.Http;
-	using System.Net.Http.Headers;
-	using System.Text;
-	using System.Configuration;
-	```
-
-1. Find the **Run** method highlighted below.
-
-    ![Replacing the Run method](Images/code-highlight-run.png)
-
-    _Replacing the Run method_
-
-1.	Replace the **Run** method with the one below:
-
-	```C#
-	// Use the blob (image) and container as parameters to refer to them in code
-	public async static Task Run(Stream image, CloudBlobContainer container, CloudBlockBlob blob, TraceWriter log) 
-	{       
-        log.Info($"Analyzing uploaded image {blob.Name} for adult content...");
-    
-		// Convert the Stream to a byte array for memory release ease
-        var array = await ToByteArrayAsync(image);
-        var imageAnalysisResult = await GetImageAnalysisAsync(array, log);
-        
-        log.Info("Is Adult: " + imageAnalysisResult.adult.isAdultContent.ToString());
-        log.Info("Adult Score: " + imageAnalysisResult.adult.adultScore.ToString());
-        log.Info("Is Racy: " + imageAnalysisResult.adult.isRacyContent.ToString());
-        log.Info("Racy Score: " + imageAnalysisResult.adult.racyScore.ToString());
-        
-        AddMetadata(image, container.Name, blob.Name, imageAnalysisResult, log);
-	}
-	```
-
-1.	Add the following helper methods after the **Run** method, and replace **{storage_account_name}** with the name of the storage account created for the Azure Function App in Exercise 1. (Be sure "_STORAGE" is appended to the name, too.)
-
-	```C#
-	#region Helpers
-	
-	// Call the Cognitive Services Computer API for analysis
-	private async static Task<ImageAnalysisInfo> GetImageAnalysisAsync(byte[] bytes, TraceWriter log) {
-	    
-	    HttpClient client = new HttpClient();
-	    
-		// Grab the Subscription Key from App Service Settings
-	    var subscriptionKey = ConfigurationManager.AppSettings["SubscriptionKey"].ToString();
-	    client.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", subscriptionKey);
-	
-		// Send the image as a byte array to the service for analysis
-	    HttpContent payload = new ByteArrayContent(bytes);
-	    payload.Headers.ContentType = new MediaTypeWithQualityHeaderValue("application/octet-stream");
-	    
-	    var results = await client.PostAsync("https://api.projectoxford.ai/vision/v1.0/analyze?visualFeatures=Adult", payload);
-	    ImageAnalysisInfo imageAnalysisResult = await results.Content.ReadAsAsync<ImageAnalysisInfo>();
-	    return imageAnalysisResult;
-	}
-
-	// Adds metadata to the destination blob
-	private static bool AddMetadata(Stream image, string containerName, string fileName, ImageAnalysisInfo imageAnalysisResult, TraceWriter log) {
-	    
-	    var storageAccountConnectionString = ConfigurationManager.AppSettings["{storage_account_name}_STORAGE"].ToString();
-	    
-	    CloudStorageAccount storageAccount = CloudStorageAccount.Parse(storageAccountConnectionString);
-	
-	    log.Info($"Intializing {containerName}-out");
-	
-	    CloudBlobClient blobClient = storageAccount.CreateCloudBlobClient();
-	    CloudBlobContainer container = blobClient.GetContainerReference($"{containerName}-out");
-	    
-	    try 
-	    {
-	        log.Info($"Creating {fileName}...");
-	        
-			// Create a new, empty blob
-	        CloudBlockBlob blob = container.GetBlockBlobReference(fileName);
-	        
-			// Add the image as the blob content
-	        blob.UploadFromStream(image);
-	    
-	        if (blob != null) 
-	        {
-				// Get the blob metadata
-	            blob.FetchAttributes();
-	            
-				// Write all the blob metadata
-	            blob.Metadata["isAdultContent"] = imageAnalysisResult.adult.isAdultContent.ToString(); 
-	            blob.Metadata["adultScore"] = imageAnalysisResult.adult.adultScore.ToString("P0").Replace(" ",""); 
-	            blob.Metadata["isRacyContent"] = imageAnalysisResult.adult.isRacyContent.ToString(); 
-	            blob.Metadata["racyScore"] = imageAnalysisResult.adult.racyScore.ToString("P0").Replace(" ",""); 
-	            
-				// Save the blob metadata
-	            blob.SetMetadata();    
-	        }
-	    
-	    }
-	    catch (Exception ex)
-	    {
-	        log.Info(ex.Message);
-	    }
-	    
-	    return true;
-	}
-
-	// Converts a stream to a byte array 
-	private async static Task<byte[]> ToByteArrayAsync(Stream stream)
-	{
-	    Int32 length = stream.Length > Int32.MaxValue ? Int32.MaxValue : Convert.ToInt32(stream.Length);
-	    byte[] buffer = new Byte[length];
-	    await stream.ReadAsync(buffer, 0, length);
-	    return buffer;
-	}
-	
-	#endregion
-	```
-
-1. Add the following classes after the methods you just added:
-
-	```C#
-	#region classes
-	
-	public class ImageAnalysisInfo
-	{
-	    public Adult adult { get; set; }
-	    public string requestId { get; set; }
-	}
-	
-	public class Adult
-	{
-	    public bool isAdultContent { get; set; }
-	    public bool isRacyContent { get; set; }
-	    public float adultScore { get; set; }
-	    public float racyScore { get; set; }
-	}
-	
-	#endregion
-	```
- 
-1. Click **Save** in the upper-right corner of the code editor. If compilation or binding errors are reported, ignore them for now.
-
-    ![Saving the function](Images/save-function.png)
-
-    _Saving the function_
-
-1. Click **View files** below the code editor.
-
-    ![Viewing all files](Images/code-view-files.png)
-
-    _Viewing all files_
-
-1. Click **function.json**. This file contains configuration information for your function's bindings.
-
-    ![Opening the JSON configuration file](Images/code-view-functions-json.png)
-
-    _Opening the JSON configuration file_
-	
-1. Replace the JSON in **function.json** with the JSON below. In three places, replace ***{storage_account_name}*** with the name of the storage account that was created for your Azure Function App in Exercise 1. Then click **Save** to save your changes.
-
-	```JSON
-	{
-	  "bindings": [
-	    {
-	      "path": "lab-images/{name}",
-	      "type": "blobTrigger",
-	      "name": "image",
-	      "direction": "in",
-	      "connection": "{storage_account_name}_STORAGE"
-	    },
-	    {
-	      "name": "container",
-	      "type": "blob",
-	      "path": "lab-images",
-	      "connection": "{storage_account_name}_STORAGE",
-	      "direction": "in"
-	    },
-	    {
-	      "name": "blob",
-	      "type": "blob",
-	      "path": "lab-images-out/{name}",
-	      "connection": "{storage_account_name}_STORAGE",
-	      "direction": "inOut"
-	    }
-	  ],
-	  "disabled": false
-	}
-	```
-
-1. Add a new file to your function by clicking the **+** button. Name the file **project.json** and press the **Enter** key after typing the name.
-
-    ![Adding a project file](Images/code-add-project-json.png)
-
-    _Adding a project file_
-	
-1. Enter the following JSON in the code editor and click **Save**.
-
-	```JSON
-	{
-	  "frameworks": {
-		    "net46":{
-		      "dependencies": {
-		        "WindowsAzure.Storage": "7.2.0"
-		      	}
-		    }
-	  	}
-	}
-	```
-
-An Azure Function written in C# has been created, complete with JSON configuration information regarding bindings and dependencies. The next step is to add a trigger that determines when the function will execute.
-
-<a name="Exercise3"></a>
-## Exercise 3: Connect to a storage account ##
-
-Now that the function has been written, you need to configure the services that the function will use. You will begin by using the [Microsoft Azure Storage Explorer](http://storageexplorer.com "Microsoft Azure Storage Explorer") to create a pair of storage containers for the images that the function will process. After creating the storage containers, you will connect your function to one of them using a blob trigger so the function will execute each time a blob is added to the container.
-
-> If you haven't installed Storage Explorer, please do so now. Versions are available for Windows, macOS, and Linux.
-
-1.	Start the Microsoft Azure Storage Explorer. If you are asked to log in, do so using the same account you used to log in to the Azure Portal.
-
-1. Find the storage account that was created for your Azure Function App in Exercise 1 and click the small arrow to the left of it to display the items underneath.
-
-    ![Finding the storage account](Images/find-storage-account.png)
-
-    _Finding the storage account_
-
-1.	Right-click (on a Mac, Command-click) **Blob Containers** and select **Create Blob Container** from the ensuing menu.
-
-    ![Creating a blob container](Images/create-blob-container.png)
-
-    _Creating a blob container_
-
-1. Type "lab-images" (without quotation marks) to name the container. The press the **Enter** key.
-
-    ![Naming the container](Images/open-storage-naming-blob-container.png)
-
-    _Naming the container_
-
-1. Repeat Steps 3 and 4 to create a container named "lab-images-out."
-
-1. Now it's time to connect the Azure Function that you created in the previous exercise to the "lab-images" container so the function will run each time a blob appears in the container. Return to the Azure Portal and to the Function App you created in Exercise 1. If the **BlobImageAnalysis** function isn't selected, click it in the ribbon on the left side of the blade.
-
-    ![Opening the function](Images/open-function.png)
-
-    _Opening the function_
-
-1. Click **Integrate** to view the function's binding configuration. You may see an error message alerting you that at least one binding must be declared to compile your function. If so, close the message box and ignore the error for now.
-
-    ![Viewing the binding configuration](Images/function-app-select-integrate.png)
-
-    _Viewing the binding configuration_
-
-1. Click **new** next to the **Storage account connection** box.
-
-    ![Configuring a blob trigger](Images/function-app-select-integrate-trigger-new.png)
-
-    _Configuring a blob trigger_
-
-1. Select the storage account that was created for your Function App in Exercise 1.
-
-    ![Connecting to a storage account](Images/function-app-config-select-storage-account.png)
-
-    _Connecting to a storage account_
-
-1. Click **Save** to save the connection that was created.
-
-    ![Saving the connection](Images/function-app-save-trigger-new.png)
-
-    _Saving the connection_
-
-Now that the function is connected to the storage account with a blob trigger, it is time to define the application settings that the function relies on.
-
-<a name="Exercise4"></a>
-## Exercise 4: Configure Azure Function App settings ##
-
-The Azure Function you created in Exercise 2 references settings in the Azure Function App you created in Exercise 1. In this exercise, you will add those settings so the function can retrieve them.
-
-1. Click **Function app settings** in the lower-left corner of the Azure Function Designer.
-
-    ![Viewing Function App settings](Images/function-app-select-app-settings.png)
-
-    _Viewing Function App settings_
-
-1. Scroll to the bottom of the page and click **Go to App Service Settings**.
-
-    ![Viewing App Service settings](Images/function-app-go-to-app-settings.png)
-
-    _Viewing App Service settings_
-
-1. Click **Application settings**.
-
-    ![Viewing application settings](Images/function-advanced-settings.png)
-
-    _Viewing application settings_
-
-1. Scroll down the page until you find the **App settings** section. Then add a new app setting entry named "SubscriptionKey" (without quotation marks) in the **Key** box. For the time being, leave the **Value** box blank.
-
-    ![Adding a subscription key](Images/function-advanced-settings-add-key.png)
-
-    _Adding a subscription key_
-
-1. The value you will fill is an subscription key for the Computer Vision API. In order to acquire a key, you need to sign up for a free account. To do that, open a new browser window or tab and go to [https://www.microsoft.com/cognitive-services/en-us/subscriptions](https://www.microsoft.com/cognitive-services/en-us/subscriptions).
-
-	> If you already have a subscription key for the Computer Vision API, you can go straight to the [subscriptions page](https://www.microsoft.com/cognitive-services/en-us/subscriptions) and skip to Step 10 of this exercise.
-
-1. If you are asked to sign in, do so with your Microsoft account.
-
-1. Click **Yes** when asked if this app can access your info.
-
-    ![Approving access to personal info](Images/access-your-info.png)
-
-    _Approving access to personal info_
-
-1. Scroll down until you find **Computer Vision**. Then check the box next to it.
-
-    ![Requesting access to the Computer Vision API](Images/check-computer-vision.png)
-
-    _Requesting access to the Computer Vision API_
-
-1. Scroll to the bottom of the page. Check the box to agree to the terms and privacy statement, and then click the **Subscribe** button.
-
-    ![Subscribing to the Computer Vision API](Images/subscribe.png)
-
-    _Subscribing to the Computer Vision API_
-
-1. Click **Copy** under **Key 1** to copy your Computer Vision subscription key to the clipboard.
-
-    ![Copying the subscription key to the clipboard](Images/computer-vision-key.png)
-
-    _Copying the subscription key to the clipboard_
-
-1. Return to the app settings for your Azure Function App in the Azure Portal and paste the subscription key into the **Value** box to the right of "SubscriptionKey." Then click **Save** at the top of the blade.
-	
-    ![Saving the subscription key](Images/function-advanced-settings-save-key.png)
-
-    _Saving the subscription key_
-
-1. The app settings are now configured for your Azure Function. It’s a good idea to validate those settings by recompiling the function and ensuring it compiles without errors. Scroll left until you see the "Function app" blade, and then click **BlobImageAnalysis**.
-	
-    ![Opening the function](Images/open-function.png)
-
-    _Opening the function_
-
-1. Make sure **Develop** is selected. Make a simple change to the code in the code editor — for example, add a space or blank line and then delete it. Now click **Clear** above the **Logs** panel, and click **Save** to recompile the function. Confirm that the message "Compilation succeeded" appears in the **Logs** panel.
-	
-    ![Recompiling the function](Images/function-recompile.png)
-
-    _Recompiling the function_
-
-The work of writing and configuring the Azure Function is complete. Now comes the fun part: testing it out.
-
-<a name="Exercise5"></a>
-## Exercise 5: Test the Azure Function ##
-
-Your function has been configured to listen for changes to the blob container named "lab-images" that you created in Exercise 3. Each time an image appears in the container, the function executes and passes the image to the Computer Vision API for analysis. To test the function, you simply upload images to the container. In this exercise, you will use the Microsoft Azure Storage Explorer to upload the images.
-
-1. Open Storage Explorer and find the "lab-images" container that you created in Exercise 3. Then click the container. 
-
-    ![Opening the "lab-images" container](Images/storage-select-source.png)
-
-    _Opening the "lab-images" container_
-
-1. Click **Upload**, and then select **Upload Files**.	
-
-    ![Uploading files to blob storage](Images/storage-select-upload-files.png)
-
-    _Uploading files to blob storage_
-
-1. Click the **...** button and select all of the files in this lab's "Resources" folder. Then close the file-selection dialog and click **Upload** to upload the files to blob storage.
-
-    ![Selecting the files to upload](Images/storage-select-browse-files.png)
-
-    _Selecting the files to upload_
-	
-1. Confirm that eight images were uploaded to the "lab-images" container.
-
-	![Uploaded images](Images/storage-select-final-uploaded.png)
-	
-	_Uploaded images_
-
-Although you couldn't see it, your Azure Function executed once for each image uploaded to the container. In the next exercise, you will inspect the results.
-
-<a name="Exercise6"></a>
-## Exercise 6: Analyze the results ##
-
-Each time an image appears in the "lab-images" container, your Azure Function passes it to the Microsoft Cognitive Services [Computer Vision API](https://www.microsoft.com/cognitive-services/en-us/computer-vision-api), which evaluates the image for "adult" or "racy" content. The function creates a copy of the image in the "lab-images-out" container and stores the values received from the Computer Vision API in the blob's metadata. You can use the Microsoft Azure Storage Explore to view that metadata, confirm that your Azure Function executed, and determine whether each image contains adult content or content that might be considered racy.
-
-1. In the Microsoft Azure Storage Explorer, click the "lab-images-out" container to view its contents. Then click the **Refresh** button to make sure the contents are current.
-
-    ![Opening the "lab-images-out" container](Images/storage-select-destination-processed.png)
-
-    _Opening the "lab-images-out" container_
-
-1. Right-click (on a Mac, Command-click) one of the images in the "lab-images-out" container and select **Properties** from the context menu.
-
-    ![Viewing blob metadata](Images/storage-view-item-properties.png)
-
-    _Viewing blob metadata_
-
-1.	Inspect the blob's metadata. *IsAdultContent* and *isRacyContent* are Boolean values that indicate whether the Computer Vision API detecting adult or racy content in the image. *adultScore* and *racyScore* indicate the computed probabilities. Check these values for other images in the "lab-images-out" container to see how they vary.
-
-    ![Metadata added by your Azure Function](Images/storage-view-metadata.png)
-
-    _Metadata added by your Azure Function_
-
-You can probably imagine how this might be used in the real world. Suppose you were building a photo-sharing site and wanted to prevent adult images from being stored. You could easily write an Azure Function that inspects each image that is uploaded and deletes it from storage if it contains adult content.
-
-<a name="Summary"></a>
-## Summary ##
-
-In this hands-on lab you learned how to:
-
-- Create an Azure Function App
-- Write an Azure Function
-- Configure an Azure Function with a blob trigger
-- Configure app settings for an Azure Function App
-- Process incoming, outgoing, and bidirectional values from a trigger
-- Use Microsoft Cognitive Services to analyze images and store the results in blob metadata
-
-This is just one example of how you can leverage Azure Functions to automate repetitive tasks. Experiment with other Azure Function templates to learn more about Azure Functions and to identify additional ways in which they can aid your research or business.
-
----
-
-Copyright 2016 Microsoft Corporation. All rights reserved. Except where otherwise noted, these materials are licensed under the terms of the MIT License. You may use them according to the license as is most appropriate for your project. The terms of this license can be found at https://opensource.org/licenses/MIT.
+- An HTTP trigger function exposing simple REST API to upload an image.
+- A blob trigger function that will extract the text from the image when it is uploaded to the blob storage.
+- Another HTTP trigger function exposing simple REST API to query the results of the text extraction.
+
+![](images/scenario_description.png)
+ 
+### First Function – a simple REST API uploading an image to Azure Blob
+
+You can imagine a scenario in which you have a web or mobile app that needs to upload images for processing. A function receiving the uploaded image can expect an HTTP POST from an HTML form that might look like this:
+
+```html
+<label>
+     Using JQuery
+</label>
+<input name=”file” type=”file” id=”me” />
+<input type=”button” id=”Upload” value=”Upload” />
+</form>
+```
+
+We want our function to receive an image and store it in Azure Blob Storage. This is a classic reader/writer pattern, where you want your API layer to do as little complex computing as possible.  The Azure Functions concept of Bindings enables developers to directly interact with the input and output values of Functions data sources. Those include Azure Storage Queue, Tables, and Blobs as well as Azure Event Hubs, Azure DocumentDB and more. [Click here for full list of bindings](https://blogs.msdn.microsoft.com/azure.microsoft.com/en-us/documentation/articles/functions-reference/#bindings]).
+
+Let’s add an Azure Blob output binding. On the **Integrate** tab, click New Output and choose Azure Storage Blob.
+
+![](images/Try_21-1024x555.jpg)
+
+The Blob parameter name, is an input argument (parameter) passed to your Function. Just like you would expect when programing any regular function. Azure Functions takes it one step further, enabling to use such bindings without knowing anything about the underlying infrastructure. This means that you don’t need to know how Azure Storage works or install Storage SDKs to use Azure Blob as your function output. You just use the _outputBlob_ object in your function, save the image to that blob and the uploaded image will appear in your Storage Blob. In the try experience you don’t have a direct access to the underline storage account powering your Functions. However, you will see it in action by the time you complete the 3rd function. Make sure you update the Path to include _“.jpg_”, and hit Save.
+
+![](images/Try_31-1024x555.jpg)
+
+In the function code, we refer to _outputBlob _as an object that is ready to be used. This function is implemented in C# and uses _StreamProvider _to read the image data from the HTTP request and store it to an Azure Blob. I don’t have any idea how Azure Storage works. Behind the scenes Azure Functions takes care of moving data in to and out from my functions. It is like magic, quick and easy to use.
+
+```csharp
+#r "Microsoft.WindowsAzure.Storage"
+
+using System.Net;
+using Microsoft.WindowsAzure.Storage.Blob;
+
+public static HttpResponseMessage Run(HttpRequestMessage req, Stream outputBlob, TraceWriter log) 
+{
+    log.Info($"C# HTTP trigger function processed a request. RequestUri={req.RequestUri}");
+
+    HttpResponseMessage result = null; 
+     
+    if (req.Content.IsMimeMultipartContent())
+    {
+            // memory stream of the incomping request 
+            var streamProvider = new MultipartMemoryStreamProvider ();
+
+            log.Info($" ***\t before await on ReadMultpart...");
+            req.Content.ReadAsMultipartAsync(streamProvider);
+            log.Info($" ***\t after await on ReadMultpart...");
+            
+            //using a stream saves the 'last' iamge if multiple are uplaoded
+            foreach (HttpContent ctnt in streamProvider.Contents)
+            {
+                // You would get hold of the inner memory stream here
+                Stream stream = ctnt.ReadAsStreamAsync().Result;
+                log.Info($"stream length = {stream.Length}"); // just to verify
+                
+                // save the stream to output blob, which will save it to Azure stroage blob
+                stream.CopyTo(outputBlob);
+
+                result = req.CreateResponse(HttpStatusCode.OK, "great ");
+            }            
+        }
+        else
+        {
+            log.Info($" ***\t ERROR!!! bad format request ");
+            result = req.CreateResponse(HttpStatusCode.NotAcceptable,"This request is not properly formatted");
+        }
+    return result;
+}
+```
+
+### Second Function – Performs OCR
+
+Let’s create the second function, called ImageOCR. This function will be triggered every time a new image file is uploaded to the blob storage container (named _outcontainer_) by the first function. Then the function will run OCR on that image to extract text embedded in it. Note, this function will run only when a new image (or any other file…) is uploaded to the blob. Again, this is Serverless in its best form, your code will run only when needed and you will pay only for that time.
+
+![](images/Try_4-1024x555.jpg)
+
+Click on **New Function** and choose a **BlobTrigger - C#**.  Make sure the path name you use to trigger is the same as the Blob container name used to write the image from the first function. If you have not changed the default, the container name of the first function is _outcontainer_/{name}.
+
+```csharp
+#r "System.IO"
+#r "System.Runtime"
+#r "System.Threading.Tasks"
+
+#r "Microsoft.WindowsAzure.Storage"
+
+using System;
+using System.IO;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.WindowsAzure.Storage.Blob;
+using Microsoft.ProjectOxford.Vision;
+using Microsoft.ProjectOxford.Vision.Contract;
+using Microsoft.WindowsAzure.Storage.Table;
+
+public class ImageText : TableEntity
+{
+    public string Text { get; set; }
+    public string Uri {get; set; }
+}
+
+public static void Run( ICloudBlob myBlob, ICollector<ImageText> outputTable, TraceWriter log) 
+{
+     try  
+    {
+        using (Stream imageFileStream = new MemoryStream())
+        {
+
+            myBlob.DownloadToStream(imageFileStream); 
+            log.Info($"stream length = {imageFileStream.Length}"); // just to verify
+
+            //
+            var visionClient = new VisionServiceClient("YOUR KEY GOES HERE");
+
+            // reset stream position to begining 
+            imageFileStream.Position = 0;
+            // Upload an image and perform OCR
+            var ocrResult = visionClient.RecognizeTextAsync(imageFileStream, "en");
+            //log.Info($"ocrResult");
+
+            string OCRText = LogOcrResults(ocrResult.Result);
+            log.Info($"image text = {OCRText}");
+
+            outputTable.Add(new ImageText()
+                            {
+                                PartitionKey = "TryFunctions",
+                                RowKey = myBlob.Name,
+                                Text = OCRText,
+                                Uri = myBlob.Uri.ToString()
+                            });            
+        }
+
+    }
+    catch (Exception e) 
+    {
+        log.Info(e.Message);
+    }
+}
+
+// helper function to parse OCR results 
+static string LogOcrResults(OcrResults results)
+{
+    StringBuilder stringBuilder = new StringBuilder();
+    if (results != null && results.Regions != null)
+    {
+        stringBuilder.Append(" ");
+        stringBuilder.AppendLine();
+        foreach (var item in results.Regions)
+        {
+            foreach (var line in item.Lines)
+            {
+                foreach (var word in line.Words)
+                {
+                    stringBuilder.Append(word.Text);
+                    stringBuilder.Append(" ");
+                }
+                stringBuilder.AppendLine();
+            }
+            stringBuilder.AppendLine();
+        }
+    }
+    return stringBuilder.ToString();
+}
+```
+
+The function is triggered by any file uploaded to the blob container. The default input parameter type of the function is string, but I will be using _ICloudBlob_, as I want to read the image as a stream and I want to get the image file name and URI. As you can see, Azure Functions bindings provide a very rich experience.
+
+To perform the OCR on a given image, I am going to use using [Microsoft Cognitive Services](https://www.microsoft.com/en-us/microsoftservices/) , also known as Project Oxford. I could use any 3rd party tool, bring a dll that implements the algorithm, or write my own. However, leveraging other services as much as possible is a core tenant of Serverless architecture. If you don’t have a Cognitive Services account, sign up for free at [https://www.microsoft.com/cognitive-services](https://www.microsoft.com/cognitive-services)
+
+Using the Cognitive Services is very easy, it comes down to two lines of code:
+
+```csharp
+  var visionClient = new VisionServiceClient("YOUR_KEY_GOES_HERE");
+   // reset stream position to begining
+   imageFileStream.Position = 0;
+   // Upload an image and perform OCR
+   var ocrResult = visionClient.RecognizeTextAsync(imageFileStream, "en");
+```
+
+In order to make the _ImageOCR_ function code work, you’ll need to import _ProjectOxford_ assemblies. Azure functions support _project.json_ files to identify nuget packages (for C#) to be automatically restored with the function. For Node.js, Azure Functions support npm.
+
+Save your code changes and then, in the Functions UI, click on View files and add **project.json** with the following text. once you save this file, Azure Functions will automatically restore the ProjectOxford package.
+ 
+```json 
+  {
+    "frameworks": {
+      "net46":{
+        "dependencies": {
+          "Microsoft.ProjectOxford.Vision": "1.0.370"
+        }
+      }
+    }
+  }
+```
+ 
+
+![](images/Try_5-1024x555.jpg)
+
+We want to save the results somewhere. In this Try Functions example we are using Azure Storage Table. Note – if you have an Azure Subscription, you can use many other Data Services provided by Azure to store and process the results.
+
+Let’s add an output binding to Azure Table Store.  Click on **Integrate** on the left menu, click **New Output**, and choose **Azure Storage Table**.
+
+![](images/Try_5_1-1024x555.jpg)
+ 
+
+Next, change the Table name from the default to _ImageText_. The Table parameter name, _outputTable_ will be used in the function code.
+
+![](images/Try_5_2-1024x555.jpg)
+
+And again, just like with the blob, I don’t need to know a lot about how Azure Storage Tables work. Azure Functions is doing all the heavy lifting. We are using the _ImageText_ table to store the image Uri (pointer to the blob storing the image), the OCR results, and the table keys in the form of a GUID.
+
+You have now completed the creation of a function that scans an image, extracts text from it and stores the results into persistent storage.
+
+### Third Function – simple REST API to query OCR results
+
+The last function we are going to create is of type HTTP trigger and will be used to return list of images and the text we extracted from the images in the second function.
+
+This time we will add an Azure Storage table as an input binding, because you would expect your function to receive the table store object to work with and extract the data. As before, make sure you are using the same table name you used in the second function ("ImageText"). Note the Partition Key, which is optional was hard-coded for _TryFunctions_.
+
+![](images/Try_61-1024x555.jpg)
+
+The function input argument is of type _IQueryable&lt;ImageText&gt;_, which represent a collection of results queried from Table Storage. Its ready to use without any knowledge of how Azure Table Storage works, I get a list I can work with. We create a _SimpleImageText _object representing the response and return a JSON representation of the data.
+
+```csharp
+  #r "System.IO"
+  #r "System.Runtime"
+  #r "System.Threading.Tasks"
+  #r "Microsoft.WindowsAzure.Storage"
+  #r "Newtonsoft.Json"
+
+  using System;
+  using System.Net;
+  using System.IO;
+  using System.Text;
+  using System.Linq;
+  using System.Threading.Tasks;
+  using Microsoft.WindowsAzure.Storage.Table;
+  using Newtonsoft.Json;
+
+  public static async Task<HttpResponseMessage> Run(HttpRequestMessage req, IQueryable<ImageText> inputTable,  TraceWriter log)
+  {
+      log.Info($"C# HTTP trigger function processed a request. RequestUri={req.RequestUri}");
+
+      var result = new List<SimpleImageText>();
+
+      var query = from ImageText in inputTable select ImageText;
+      //log.Info($"original query --> {JsonConvert.SerializeObject(query)}");
+
+      foreach (ImageText imageText in query)
+      {
+          result.Add( new SimpleImageText(){Text = imageText.Text, Uri = imageText.Uri});
+          //log.Info($"{JsonConvert.SerializeObject()}");
+      }
+//    log.Info($"list of results --> {JsonConvert.SerializeObject(result)}");
+
+      return  req.CreateResponse(HttpStatusCode.OK, JsonConvert.SerializeObject(result));
+  }
+
+  // used to get rows from table
+  public class ImageText : TableEntity
+  {
+      public string Text { get; set; }
+      public string Uri {get; set; }
+  }
+
+  public class SimpleImageText
+  {
+      public string Text { get; set; }
+      public string Uri {get; set; }
+  }
+
+```
+ 
+### We created three functions, it is time to test them.
+
+You can use any of your favorite tools to generate HTTP calls, including CURL, writing a simple html / Java script, or anything else. To test both HTTP functions I’ll use [Postman](https://www.getpostman.com/), using form-data as a Body to POST to the first function URL. You should receive “great” as a response and if you look at the first function log, in the Try Azure Function UI, you will notice traces from your function. If something went wrong, try debugging it…
+
+![](images/Try_7-500x278.jpg) 
+
+Assuming your first function worked, go to the OCR image function and upload another image. You will notice that the OCR function got triggered, which means your first function successfully saved the image to storage and your second function picked it up. Again, you should see in the log traces from your function.
+
+Use Postman to call the last function and you should see JSON array including the URLs for any images uploaded and the text extacted from them.
+
+![](images/Try_8.jpg)
+
+Here is a [repo](https://github.com/yochay/FunctionSimpleImageUpload) with the completed function. Note, this solution is a little more complex and includes handling multiple uploaded files and adding a SAS token to the container.
+
+One small note: if you want to view the images, you will need to generate a SAS token for the container, as by default, an Azure Blob Storage container permission blocks public read access. I’ve added the required code, which generates a 24 access token to images, to the _ImageViewText_ functions. You will also need to pass the blob container as input argument for the functions.
+
+```csharp
+  // IQueryable return list of image text objects
+  // CloudBlobContainer used to generate SAS token to allow secure access to image file
+  public static async Task Run(HttpRequestMessage req, IQueryable inputTable, CloudBlobContainer inputContainer,  TraceWriter log)
+  {
+      log.Info($"C# HTTP trigger function processed a request. RequestUri={req.RequestUri}");
+
+      //get container sas token
+      var st = GetContainerSasToken(inputContainer);
+      //log.Info($"token --> {st}");
+      var result = new List();
+
+      var query = from ImageText in inputTable select ImageText;
+      //log.Info($"original query --> {JsonConvert.SerializeObject(query)}");
+
+      foreach (ImageText imageText in query)
+      {
+          result.Add( new SimpleImageText(){Text = imageText.Text, Uri = imageText.Uri + st});
+          //log.Info($"{JsonConvert.SerializeObject()}");
+      }
+
+      return req.CreateResponse(HttpStatusCode.OK, JsonConvert.SerializeObject(result));
+  }
+
+  // used to get rows from table
+  public class ImageText : TableEntity
+  {
+      public string Text { get; set; }
+      public string Uri {get; set; }
+  }
+
+  public class SimpleImageText
+  {
+      public string Text { get; set; }
+      public string Uri {get; set; }
+  }
+
+  // generate 24 hour SAS token for the container. Will allow read for all images
+  // TBD -  shoudl be done once every 24 hours via timer, rather than each time in the funciton 
+  static string GetContainerSasToken(CloudBlobContainer container)
+  {
+      //Set the expiry time and permissions for the container.
+      //In this case no start time is specified, so the shared access signature becomes valid immediately.
+      SharedAccessBlobPolicy sasConstraints = new SharedAccessBlobPolicy();
+      sasConstraints.SharedAccessExpiryTime = DateTime.UtcNow.AddHours(24);
+      sasConstraints.Permissions = SharedAccessBlobPermissions.Read;
+
+      //Generate the shared access signature on the container, setting the constraints directly on the signature.
+      string sasContainerToken = container.GetSharedAccessSignature(sasConstraints);
+
+      //Return the URI string for the container, including the SAS token.
+      return sasContainerToken;
+  }
+
+```
+
+With the updated _ImageViewText_ function you can now test your application with a simple Single Page Application that is hosted on Azure Storage [http://tryfunctionsdemo.blob.core.windows.net/static-site/test-try-functions.html](http://tryfunctionsdemo.blob.core.windows.net/static-site/test-try-functions.html)
+
+![](images/testingWitaSPA-1024x687.jpg)
+
+This simple HTML application has two text box for you to paste the URL of your function. You upload an image by dragging and dropping. You can get images by clinking the GetImages button. The screen capture shows the network calls and console for getting images. You can see on the console, the get images return array of images, with respective URIs and each image text, which we use to then display. Note the images have SAS tokens.
