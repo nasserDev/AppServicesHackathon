@@ -27,10 +27,13 @@ If you need any help, press any of the bulbs on your table :)
 
 The technical mentors team are:
 
-1- **Nasser AlNasser** - Senior Technical Evangelist.
-2- **Sayed Ali** - Senior Premier Field Engineer.
-3- **Mohamed Ossama** - Technical Solution Professional.
-4- **Tarek Al-Laham** - Technical Solution Professional.   
+1. **Nasser AlNasser** - Senior Technical Evangelist.
+
+2. **Sayed Ali** - Senior Premier Field Engineer.
+
+3. **Mohamed Ossama** - Technical Solution Professional.
+
+4. **Tarek Al-Laham** - Technical Solution Professional.   
 
 
 
