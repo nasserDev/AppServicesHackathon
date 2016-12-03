@@ -1,4 +1,4 @@
-
+# OCR using Azure Functions + Cognitive Services 
 Let’s start out by using the Try Azure Functions experience to create a simple HTTP trigger function..
 
 Here is a very simple HTTP trigger “Hello World” example. Try it yourself:

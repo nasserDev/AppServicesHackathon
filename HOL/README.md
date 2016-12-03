@@ -1,5 +1,5 @@
 <a name="HOLTitle"></a>
-# Azure Functions Hands On Lab #
+# Image Description using Azure Functions + Cognitive Services #
 
 ---
 
