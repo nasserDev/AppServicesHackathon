@@ -13,9 +13,12 @@ Welcome to #AppServicesHackathon where we are going to work for the next 48 hour
 3- That's all, prepare your project to be presented at 3:30 PM the 2nd day of the hackathon. You have 10 mins to present.
 
 
+
 # Samples and HOL for Azure Functions
 
-You can find the Hands-on Lab we started this hackathon with in addition to some code samples we prepared to be utilized in Azure Functions. Feel free to utilize these resources in your project 
+You can find the Hands-on Lab we started this hackathon with in addition to some code samples we prepared to be utilized in Azure Functions. Feel free to utilize these resources in your project.
+
+
 
 
 # Submit Your Project
