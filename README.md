@@ -10,7 +10,7 @@ Welcome to #AppServicesHackathon where we are going to work for the next 48 hour
 
 3- You still can use any other Azure or non-Azure technology. Feel free to innovate and integrate with any other service (i.e: Cognitive Services, PowerBI Embeded, Bots .. etc)
 
-3- That's all, prepare your project to be presented at 3:30 PM the 2nd day of the hackathon. You have 10 mins to present.
+4- That's all, prepare your project to be presented at 3:30 PM the 2nd day of the hackathon. You have 10 mins to present.
 
 
 
@@ -25,10 +25,17 @@ If you need any help, press any of the bulbs on your table :)
 
 ![Help Me Bulbs](HOL/Images/bulb.jpg)
 
+The technical mentors team are:
+
+1- **Nasser AlNasser** - Senior Technical Evangelist.
+2- **Sayed Ali** - Senior Premier Field Engineer.
+3- **Mohamed Ossama** - Technical Solution Professional.
+4- **Tarek Al-Laham** - Technical Solution Professional.   
+
 
 
 # Submit Your Project
 
-If your project doesn't contain sensitive data about your business and you would like to share it with the rest, you can send it to me : nnasser -at- outlook -dot- com or publish it yourself to this repo and projects folder.
+If your project doesn't contain sensitive data about your business and you would like to share it with the rest, you can send it to Nasser AlNasser : nnasser -at- outlook -dot- com or publish it yourself to this repo and projects folder.
 
 
