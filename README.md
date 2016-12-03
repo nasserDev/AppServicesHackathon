@@ -15,7 +15,7 @@ Welcome to #AppServicesHackathon where we are going to work for the next 48 hour
 
 ## Samples and HOL for Azure Functions ##
 
-You can find the [Hands-on Lab](https://github.com/nasserDev/AppServicesHackathon/blob/master/HOL/README.md)  we started this hackathon with in addition to [some code samples] (https://github.com/nasserDev/AppServicesHackathon/tree/master/Samples) we prepared to be utilized in Azure Functions. Feel free to utilize these resources in your project.
+You can find the [Hands-on Lab](https://github.com/nasserDev/AppServicesHackathon/blob/master/HOL2/README.md)  we started this hackathon with in addition to [another Hands On Lab you can check and practice] (https://github.com/nasserDev/AppServicesHackathon/blob/master/HOL2/README.md) [some code samples] (https://github.com/nasserDev/AppServicesHackathon/tree/master/Samples) we prepared to be utilized in Azure Functions. Feel free to utilize these resources in your project.
 
 
 ### Documentation
